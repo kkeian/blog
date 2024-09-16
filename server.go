@@ -6,47 +6,44 @@ import (
 	"net/http"
 )
 
-type page struct {
-	Header  string
-	Content string
+type Page struct {
+	Name    string
+	Header  template.HTML
+	Content template.HTML
+	Footer  template.HTML
 }
 
-// ServeHTTP implements http.Handler.
-func (p *page) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
-	page := `<!DOCTYPE html><html>
+const defaultPage = `<!DOCTYPE html>
+<html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Keian Kaserman</title>
+		<title>Keian Kaserman {{if .Name}}- {{ .Name}} {{end}}</title>
 	</head>
 	<body>
-		{{.Header}}
-		{{.Content}}
+		{{if .Header}} {{.Header}} {{end}}
+		{{ .Content }}
+		{{if .Footer}} {{ .Footer}} {{end}}
 	</body>
-	</html`
-	outline := template.Must(template.New("out").Parse(page))
-	outline.Execute(w, p)
+</html>
+`
+
+func indexHandl(w http.ResponseWriter, r *http.Request) {
+	outline := template.Must(template.New("out").Parse(defaultPage)) // build template
+	header := `<header><h1>Keian Kaserman</h1></header>`
+	content := `<article><p>Testing paragraph content here</p></article>`
+	indexPage := Page{Header: template.HTML(header), Content: template.HTML(content)}
+
+	err := outline.Execute(w, indexPage) // insert values into template
+	if err != nil {
+		panic(err)
+	}
 	return
 }
 
-func genBlogHeader() string {
-	header := "<header><h1>Keian Kaserman</h1></header>"
-	return header
-}
-
-// use raw function handler when we don't have any state to track
-// on each handler invocation
-func createIndexPage() page {
-	const cont = `<p>Welcome!</p>`
-	indexPage := page{genBlogHeader(), cont}
-
-	return indexPage
-}
-
 func main() {
-	indexP := createIndexPage()
 
-	http.Handle("/", indexP)
-	// http.HandleFunc("/") // use function as handler
+	http.HandleFunc("/", indexHandl) // use function as handler
 	// serve site on designated port
 	log.Fatal(http.ListenAndServe(":8080", nil))
+
 }
